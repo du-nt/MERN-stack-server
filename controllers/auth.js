@@ -74,7 +74,7 @@ const login = (req, res) => {
           res
             .cookie("jwt_auth", user.token, { httpOnly: true })
             .status(200)
-            .json(user);
+            .json({ success: true });
         });
       });
     });

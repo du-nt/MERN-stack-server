@@ -2,64 +2,6 @@ const formidable = require("formidable");
 const { upload } = require("../utils/helper");
 
 const User = require("../models/User");
-const Post = require("../models/Post");
-
-const feed = async (req, res) => {
-  const following = req.user.following;
-
-  const users = await User.find()
-    .where("_id")
-    .in(following.concat([req.user.id]))
-    .exec();
-
-  const postIds = users.map((user) => user.posts).flat();
-
-  const posts = await Post.find()
-    .populate({
-      path: "comments",
-      select: "text",
-      populate: { path: "user", select: "avatar displayName userName" },
-    })
-    .populate({ path: "author", select: "avatar displayName userName" })
-    .populate({ path: "likes", select: " avatar userName displayName" })
-    .where("_id")
-    .in(postIds)
-    .sort("-createdAt")
-    .lean()
-    .exec();
-
-  posts.forEach((post) => {
-    // is the logged in user liked the post
-    post.isLiked = post.likes.some(
-      (like) => like._id.toString() === req.user._id.toString()
-    );
-
-    // is the logged in saved this post
-
-    post.isSaved = req.user.savedPosts.some(
-      (_id) => _id.toString() === post._id.toString()
-    );
-    post.newComments = [];
-
-    // is the post belongs to the logged in user
-
-    // post.isMine = false;
-    // if (post.author._id.toString() === req.user.id) {
-    //   post.isMine = true;
-    // }
-
-    // is the comment belongs to the logged in user
-
-    // post.comments.map((comment) => {
-    //   comment.isCommentMine = false;
-    //   if (comment.user._id.toString() === req.user.id) {
-    //     comment.isCommentMine = true;
-    //   }
-    // });
-  });
-
-  res.json(posts);
-};
 
 const getProfile = async (req, res) => {
   const user = await User.findOne({ userName: req.params.userName })
@@ -81,84 +23,6 @@ const getProfile = async (req, res) => {
   }
 
   res.json(user);
-};
-
-const follow = async (req, res) => {
-  const user = await User.findById(req.params.userId);
-
-  if (!user) {
-    return res.status(404).json({
-      error: `No user found for id ${req.params.userId}`,
-    });
-  }
-
-  // make the sure the user is not the logged in user
-  if (req.params.userId === req.user.id) {
-    return res
-      .status(404)
-      .json({ error: "You can't unfollow/follow yourself" });
-  }
-
-  // only follow if the user is not following already
-  if (user.followers.includes(req.user.id)) {
-    return res.status(404).json({ error: "You are already following him" });
-  }
-
-  await User.findByIdAndUpdate(req.params.userId, {
-    $push: { followers: req.user.id },
-    $inc: { followersCount: 1 },
-  });
-
-  await User.findByIdAndUpdate(req.user.id, {
-    $push: { following: req.params.userId },
-    $inc: { followingCount: 1 },
-  });
-
-  res.json({ success: true });
-};
-
-const unFollow = async (req, res) => {
-  const user = await User.findById(req.params.userId);
-
-  if (!user) {
-    return res.status(404).json({
-      error: `No user found for id ${req.params.userId}`,
-    });
-  }
-
-  // make the sure the user is not the logged in user
-  if (req.params.userId === req.user.id) {
-    return res
-      .status(404)
-      .json({ error: "You can't unfollow/follow yourself" });
-  }
-
-  // only unfollow if the user is following him
-  if (!user.followers.includes(req.user.id)) {
-    return res.status(404).json({ error: "You are not following him" });
-  }
-
-  await User.findByIdAndUpdate(req.params.userId, {
-    $pull: { followers: req.user.id },
-    $inc: { followersCount: -1 },
-  });
-  await User.findByIdAndUpdate(req.user.id, {
-    $pull: { following: req.params.userId },
-    $inc: { followingCount: -1 },
-  });
-
-  res.json({ success: true });
-};
-
-const getUsers = async (req, res) => {
-  let users = await User.find({
-    _id: { $ne: req.user.id },
-    followers: { $nin: [req.user.id] },
-  })
-    .select("avatar userName displayName")
-    .lean()
-    .exec();
-  res.json(users);
 };
 
 const editUser = async (req, res) => {
@@ -250,11 +114,7 @@ const searchUser = async (req, res) => {
 };
 
 module.exports = {
-  feed,
   getProfile,
-  follow,
-  unFollow,
-  getUsers,
   editUser,
   changePhoto,
   removePhoto,

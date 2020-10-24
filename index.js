@@ -8,12 +8,13 @@ const app = express();
 require("dotenv").config();
 const port = process.env.PORT || 8000;
 
-app.use(
-  cors({
-    credentials: true,
-    origin: true,
-  })
-);
+app.use(cors());
+// app.use(
+//     cors({
+//       credentials: true,
+//       origin: true,
+//     })
+//   );
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -32,7 +33,6 @@ mongoose
 app.get("/", (req, res) => res.send("Hello World!"));
 
 app.use("/api/users", require("./routes/users"));
-app.use("/api/posts", require("./routes/posts"));
 app.use("/api/auth", require("./routes/auth"));
 
 app.listen(port, () => console.log(`App listening on port ${port}!`));
